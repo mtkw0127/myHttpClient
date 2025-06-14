@@ -27,7 +27,7 @@ data class Response(
         companion object {
             // """は生文字列リテラルであり、バックスラッシュでのエスケープ不要
             private val charsetRegex = Regex("""charset=([\w-]+)""")
-            private const val KEY_CONTENT_TYPE = "Content-Type"
+            private const val KEY_CONTENT_TYPE = "content-type"
         }
     }
 
@@ -56,5 +56,38 @@ data class Response(
         result = 31 * result + bodyBytes.contentHashCode()
         result = 31 * result + body.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return """
+status: $status\n
+${headers.values.map { "${it.key}: ${it.value}" }.joinToString("\n")}
+body: $body
+        """.trim()
+    }
+
+    companion object {
+        fun from(responseBytes: ByteArray): Response {
+            val responseString = responseBytes.toString(Charsets.ISO_8859_1)
+
+            val headerPart = responseString.split("\r\n\r\n", limit = 2)[0]
+
+            val statusLine = headerPart.split("\r\n")[0]
+            val contentLines = headerPart.split("\r\n").drop(1).associate {
+                val parts = it.split(":", limit = 2)
+                parts[0].lowercase() to parts[1]
+            }
+
+            // ヘッダーとボディの区切りは "\r\n\r\n" であるため、そこからボディを抽出
+            // "\r\n\r\n"のindexを見つけて、改行分の4バイトをスキップしてボディを取得
+            val bodyBytes =
+                responseBytes.sliceArray(responseString.indexOf("\r\n\r\n") + 4 until responseBytes.size)
+
+            return Response(
+                status = Status(statusLine),
+                headers = Headers(contentLines),
+                bodyBytes = bodyBytes,
+            )
+        }
     }
 }
