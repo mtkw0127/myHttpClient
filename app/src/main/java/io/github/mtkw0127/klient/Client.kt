@@ -50,6 +50,8 @@ private fun parseResponse(responseBytes: ByteArray): String {
             Charsets.forName(it)
         } ?: Charsets.UTF_8
 
+    // ヘッダーとボディの区切りは "\r\n\r\n" であるため、そこからボディを抽出
+    // "\r\n\r\n"のindexを見つけて、改行分の4バイトをスキップしてボディを取得
     val bodyBytes =
         responseBytes.sliceArray(responseString.indexOf("\r\n\r\n") + 4 until responseBytes.size)
 
