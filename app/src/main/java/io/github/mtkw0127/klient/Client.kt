@@ -1,6 +1,6 @@
 package io.github.mtkw0127.klient
 
-import io.ktor.utils.io.charsets.forName
+import io.github.mtkw0127.klient.model.Response
 import java.io.ByteArrayOutputStream
 import java.net.Socket
 
@@ -29,7 +29,6 @@ fun main() {
             response.write(buffer, 0, read)
         }
 
-
         val body = parseResponse(response.toByteArray())
 
         println("Response Body")
@@ -37,25 +36,25 @@ fun main() {
     }
 }
 
-private fun parseResponse(responseBytes: ByteArray): String {
+private fun parseResponse(responseBytes: ByteArray): Response {
     val responseString = responseBytes.toString(Charsets.ISO_8859_1)
 
-    val headerPart = responseString.split("\r\n", limit = 2)[0]
+    val headerPart = responseString.split("\r\n\r\n", limit = 2)[0]
 
-    // """は生文字列リテラルであり、バックスラッシュでのエスケープ不要
-    val charset = Regex("""charset=([\w-]+)""")
-        .find(headerPart)
-        ?.groupValues
-        ?.get(1)?.let {
-            Charsets.forName(it)
-        } ?: Charsets.UTF_8
+    val statusLine = headerPart.split("\r\n")[0]
+    val contentLines = headerPart.split("\r\n").drop(1).associate {
+        val parts = it.split(":", limit = 2)
+        parts[0] to parts[1]
+    }
 
     // ヘッダーとボディの区切りは "\r\n\r\n" であるため、そこからボディを抽出
     // "\r\n\r\n"のindexを見つけて、改行分の4バイトをスキップしてボディを取得
     val bodyBytes =
         responseBytes.sliceArray(responseString.indexOf("\r\n\r\n") + 4 until responseBytes.size)
 
-    val bodyString = bodyBytes.toString(charset)
-
-    return bodyString
+    return Response(
+        status = Response.Status(statusLine),
+        headers = Response.Headers(contentLines),
+        bodyBytes = bodyBytes,
+    )
 }
