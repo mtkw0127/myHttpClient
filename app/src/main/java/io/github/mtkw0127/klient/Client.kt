@@ -8,12 +8,13 @@ fun main() {
     val host = "localhost"
     val path = "/chunked"
     val port = 8080
+    val method = "GET"
     Socket(host, port).use { socket ->
         val out = socket.outputStream
         val input = socket.inputStream
 
         val request = buildString {
-            append("GET $path HTTP/1.1\r\n")
+            append("$method $path HTTP/1.1\r\n")
             append("Host: $host\r\n")
             append("Connection: close\r\n")
             append("\r\n")

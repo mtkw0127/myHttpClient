@@ -15,7 +15,7 @@ fun main() {
     embeddedServer(Netty, port = 8080) {
         routing {
             get("/") {
-                call.respondText("Hello, World!")
+                call.respondText("Hello, World!おはよう！")
             }
             get("/chunked") {
                 call.respondTextWriter(contentType = ContentType.Text.Plain) {

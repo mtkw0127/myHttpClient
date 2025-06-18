@@ -28,11 +28,15 @@ data class Response(
         val isTransferEncodingChunked: Boolean
             get() = values[KEY_TRANSFER_ENCODING] == "chunked"
 
+        val contentLength: Int?
+            get() = values[KEY_CONTENT_LENGTH]?.toInt(radix = 10)
+
         companion object {
             // """は生文字列リテラルであり、バックスラッシュでのエスケープ不要
             private val charsetRegex = Regex("""charset=([\w-]+)""")
             private const val KEY_CONTENT_TYPE = "content-type"
             private const val KEY_TRANSFER_ENCODING = "transfer-encoding"
+            private const val KEY_CONTENT_LENGTH = "content-length"
         }
     }
 
@@ -91,10 +95,16 @@ body: $body
 
             // ヘッダーとボディの区切りは "\r\n\r\n" であるため、そこからボディを抽出
             // "\r\n\r\n"のindexを見つけて、改行分の4バイトをスキップしてボディを取得
+            val bodyStartIndex = responseString.indexOf("\r\n\r\n") + 4
+            val bodyEndIndex = if (headers.contentLength != null) {
+                bodyStartIndex + checkNotNull(headers.contentLength)
+            } else {
+                responseBytes.size
+            }
             val bodyBytes =
                 responseBytes
                     .sliceArray(
-                        indices = responseString.indexOf("\r\n\r\n") + 4 until responseBytes.size
+                        indices = bodyStartIndex until bodyEndIndex
                     )
                     .let { rawBytes ->
                         if (headers.isTransferEncodingChunked) {
