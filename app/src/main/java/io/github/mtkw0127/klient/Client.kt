@@ -6,13 +6,14 @@ import java.net.Socket
 
 fun main() {
     val host = "localhost"
+    val path = "/chunked"
     val port = 8080
     Socket(host, port).use { socket ->
         val out = socket.outputStream
         val input = socket.inputStream
 
         val request = buildString {
-            append("GET / HTTP/1.1\r\n")
+            append("GET $path HTTP/1.1\r\n")
             append("Host: $host\r\n")
             append("Connection: close\r\n")
             append("\r\n")
@@ -22,15 +23,18 @@ fun main() {
         out.flush()
 
         val buffer = ByteArray(8192)
-        val response = ByteArrayOutputStream()
+        val rawResponse = ByteArrayOutputStream()
         var read: Int
 
         while (input.read(buffer).also { read = it } != -1) {
-            response.write(buffer, 0, read)
+            rawResponse.write(buffer, 0, read)
         }
 
-        val body = Response.from(response.toByteArray())
+        println("Response received from server:")
+        println("$rawResponse")
 
-        println(body)
+        val response = Response.from(rawResponse.toByteArray())
+
+        println(response)
     }
 }

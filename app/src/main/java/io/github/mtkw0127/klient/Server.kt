@@ -1,7 +1,6 @@
 package io.github.mtkw0127.klient
 
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.request.receiveText
@@ -19,9 +18,16 @@ fun main() {
                 call.respondText("Hello, World!")
             }
             get("/chunked") {
-                call.response.headers.append(HttpHeaders.TransferEncoding, "chunked")
                 call.respondTextWriter(contentType = ContentType.Text.Plain) {
-                    val messages = listOf("Hello", "World", "This", "is", "chunked", "response")
+                    val messages = listOf(
+                        "Hello",
+                        "World",
+                        "This",
+                        "is",
+                        "Chunked",
+                        "response.",
+                        "Good byte! See you later!"
+                    )
                     for (msg in messages) {
                         write(msg)
                         flush()
