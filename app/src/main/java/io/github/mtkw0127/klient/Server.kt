@@ -26,7 +26,8 @@ fun main() {
                         "is",
                         "Chunked",
                         "response.",
-                        "Good byte! See you later!"
+                        "Good byte! See you later!",
+                        "さようなら",
                     )
                     for (msg in messages) {
                         write(msg)
