@@ -55,7 +55,7 @@ fun main() {
         }
 
         // End
-        requests.add("Connection: close")
+        requests.add("Connection: keep-alive")
         requests.add("\r\n")
 
         val requestBytes = requests.joinToString("\r\n").toByteArray()
