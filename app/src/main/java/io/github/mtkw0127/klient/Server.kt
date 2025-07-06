@@ -20,14 +20,8 @@ fun main() {
             get("/chunked") {
                 call.respondTextWriter(contentType = ContentType.Text.Plain) {
                     val messages = listOf(
-                        "Hello",
-                        "World",
-                        "This",
-                        "is",
                         "Chunked",
-                        "response.",
-                        "Good byte! See you later!",
-                        "さようなら",
+                        "Response"
                     )
                     for (msg in messages) {
                         write(msg)

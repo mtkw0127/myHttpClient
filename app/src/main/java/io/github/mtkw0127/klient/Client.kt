@@ -1,13 +1,11 @@
 package io.github.mtkw0127.klient
 
 import io.github.mtkw0127.klient.model.Response
-import java.io.ByteArrayOutputStream
 import java.net.Socket
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 enum class Method(val value: String) {
-
     GET(
         value = "GET"
     ),
@@ -27,15 +25,14 @@ enum class ContentType(val value: String) {
 
 fun main() {
     val host = "localhost"
-    val path = "/echo"
+    val path = "/chunked"
     val port = 8080
-    val method = Method.POST
-// For Post
+    val method = Method.GET
+    // For Post
     val content = "name=mtkw&age=31&country=Japan"
     val contentType = ContentType.FORM_URLENCODED
     Socket(host, port).use { socket ->
         val out = socket.outputStream
-        val input = socket.inputStream
 
         // Base requests
         val requests = mutableListOf(
@@ -82,18 +79,7 @@ fun main() {
             println(content)
         }
 
-        val buffer = ByteArray(8192)
-        val rawResponse = ByteArrayOutputStream()
-        var read: Int
-
-        while (input.read(buffer).also { read = it } != -1) {
-            rawResponse.write(buffer, 0, read)
-        }
-
-        println("==Response received from server==")
-        println(rawResponse)
-
-        val response = Response.from(rawResponse.toByteArray())
+        val response = Response.from(input = socket.inputStream)
 
         println("==Parsed response==")
         println(response)

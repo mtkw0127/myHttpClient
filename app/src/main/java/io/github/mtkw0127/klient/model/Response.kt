@@ -1,6 +1,7 @@
 package io.github.mtkw0127.klient.model
 
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.nio.charset.Charset
 
 data class Response(
@@ -31,12 +32,16 @@ data class Response(
         val contentLength: Int?
             get() = values[KEY_CONTENT_LENGTH]?.toInt(radix = 10)
 
+        val isKeepAlive: Boolean
+            get() = values[KEY_CONNECTION] == "keep-alive"
+
         companion object {
             // """は生文字列リテラルであり、バックスラッシュでのエスケープ不要
             private val charsetRegex = Regex("""charset=([\w-]+)""")
             private const val KEY_CONTENT_TYPE = "content-type"
             private const val KEY_TRANSFER_ENCODING = "transfer-encoding"
             private const val KEY_CONTENT_LENGTH = "content-length"
+            private const val KEY_CONNECTION = "connection"
         }
     }
 
@@ -76,43 +81,91 @@ body: $body
     }
 
     companion object {
-        fun from(responseBytes: ByteArray): Response {
-            val responseString = responseBytes.toString(Charsets.ISO_8859_1)
+        fun from(input: InputStream): Response {
+            val window = ArrayDeque<Byte>(4)
+            val headerResponse = ByteArrayOutputStream()
 
-            val headerPart = responseString.split("\r\n\r\n", limit = 2)[0]
+            // Header part
+            while (true) {
+                val byte = input.read()
+                if (byte == -1) break
+                headerResponse.write(byte)
 
-            val status = headerPart
+                if (window.size == 4) window.removeFirst()
+                window.addLast(byte.toByte())
+
+                // \r\n\r\n に一致したら終了
+                if (window.size == 4 &&
+                    window.elementAt(0) == '\r'.code.toByte() &&
+                    window.elementAt(1) == '\n'.code.toByte() &&
+                    window.elementAt(2) == '\r'.code.toByte() &&
+                    window.elementAt(3) == '\n'.code.toByte()
+                ) {
+                    break
+                }
+            }
+
+            val headerString = headerResponse.toByteArray().toString(Charsets.ISO_8859_1)
+            val status = headerString
                 .split("\r\n")[0]
                 .let { statusLine ->
                     Status(statusLine)
                 }
-            val headers = headerPart.split("\r\n").drop(1).associate {
-                val parts = it.split(":", limit = 2)
-                parts[0].lowercase() to parts[1].trim()
-            }.let { contentLines ->
-                Headers(contentLines)
-            }
+            val headers = headerString.split("\r\n")
+                .drop(1)
+                .mapNotNull {
+                    val parts = it.split(":", limit = 2)
+                    when {
+                        parts.size == 2 -> parts[0].lowercase() to parts[1].trim()
+                        else -> null
+                    }
+                }
+                .associate {
+                    it
+                }.let { contentLines ->
+                    Headers(contentLines)
+                }
 
-            // ヘッダーとボディの区切りは "\r\n\r\n" であるため、そこからボディを抽出
-            // "\r\n\r\n"のindexを見つけて、改行分の4バイトをスキップしてボディを取得
-            val bodyStartIndex = responseString.indexOf("\r\n\r\n") + 4
-            val bodyEndIndex = if (headers.contentLength != null) {
-                bodyStartIndex + checkNotNull(headers.contentLength)
-            } else {
-                responseBytes.size
-            }
-            val bodyBytes =
-                responseBytes
-                    .sliceArray(
-                        indices = bodyStartIndex until bodyEndIndex
-                    )
-                    .let { rawBytes ->
-                        if (headers.isTransferEncodingChunked) {
-                            parseTransferEncodingChunked(rawBytes, headers)
-                        } else {
-                            rawBytes
+            // Body part
+            var totalReadBytes = 0
+            val bodyResponse = ByteArrayOutputStream()
+            val arrayDeque = ArrayDeque<Byte>(5)
+            while (true) {
+                val byte = input.read()
+                totalReadBytes++
+                bodyResponse.write(byte)
+                when {
+                    byte == -1 -> break
+                    headers.isKeepAlive &&
+                            headers.isTransferEncodingChunked.not() &&
+                            totalReadBytes == checkNotNull(headers.contentLength) -> break
+
+                    headers.isKeepAlive && headers.isTransferEncodingChunked -> {
+                        // 0\r\n\r\nが来たら終了
+                        if (arrayDeque.size == 5) arrayDeque.removeFirst()
+                        arrayDeque.addLast(byte.toByte())
+                        // \r\n\r\n に一致したら終了
+                        if (arrayDeque.size == 5 &&
+                            arrayDeque.elementAt(0) == '0'.code.toByte() &&
+                            arrayDeque.elementAt(1) == '\r'.code.toByte() &&
+                            arrayDeque.elementAt(2) == '\n'.code.toByte() &&
+                            arrayDeque.elementAt(3) == '\r'.code.toByte() &&
+                            arrayDeque.elementAt(4) == '\n'.code.toByte()
+                        ) {
+                            break
                         }
                     }
+                }
+            }
+
+            val bodyBytes = if (headers.isTransferEncodingChunked) {
+                parseTransferEncodingChunked(
+                    bodyBytes = bodyResponse.toByteArray(),
+                    headers = headers,
+                )
+            } else {
+                bodyResponse.toByteArray()
+            }
 
             return Response(
                 status = status,
