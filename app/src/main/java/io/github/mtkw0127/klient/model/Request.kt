@@ -1,20 +1,19 @@
 package io.github.mtkw0127.klient.model
 
-import java.net.Socket
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 sealed interface Request {
-    val socket: Socket
     val path: String
     val host: String
+    val port: Int
 
     fun build(): ByteArray
 
     data class GET(
-        override val socket: Socket,
         override val path: String,
         override val host: String,
+        override val port: Int,
     ) : Request {
         override fun build() = buildString {
             append("GET $path HTTP/1.1\r\n")
@@ -25,9 +24,9 @@ sealed interface Request {
     }
 
     data class POST(
-        override val socket: Socket,
         override val path: String,
         override val host: String,
+        override val port: Int,
         val content: String,
         val contentType: ContentType,
         val data: String,
@@ -86,18 +85,18 @@ fun sampleRequests(): List<Request> {
 // For GET request
 fun sampleRequest1(): Request {
     return Request.GET(
-        socket = Socket("localhost", 8080),
         path = "/greet",
-        host = "localhost"
+        host = "localhost",
+        port = 8080,
     )
 }
 
 // For POST request with form-urlencoded content type
 fun sampleRequest2(): Request {
     return Request.POST(
-        socket = Socket("localhost", 8080),
         path = "/for_post",
         host = "localhost",
+        port = 8080,
         content = "Echo: Hello, World!",
         contentType = Request.POST.ContentType.FORM_URLENCODED,
         data = "message=Hello%2C+World%21"
@@ -107,9 +106,9 @@ fun sampleRequest2(): Request {
 // For JSON content type
 fun sampleRequest3(): Request {
     return Request.POST(
-        socket = Socket("localhost", 8080),
         path = "/for_post",
         host = "localhost",
+        port = 8080,
         content = "{\"message\": \"Hello, World!\"}",
         contentType = Request.POST.ContentType.APPLICATION_JSON,
         data = "{\"message\": \"Hello, World!\"}"
@@ -119,8 +118,8 @@ fun sampleRequest3(): Request {
 // For chunked transfer encoding
 fun sampleRequest4(): Request {
     return Request.GET(
-        socket = Socket("localhost", 8080),
         path = "/for_chunked",
-        host = "localhost"
+        host = "localhost",
+        port = 8080,
     )
 }
