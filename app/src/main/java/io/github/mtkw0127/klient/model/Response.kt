@@ -35,6 +35,9 @@ data class Response(
         val isKeepAlive: Boolean
             get() = values[KEY_CONNECTION] == "keep-alive"
 
+        val isClose: Boolean
+            get() = values[KEY_CONNECTION] == "close"
+
         companion object {
             // """は生文字列リテラルであり、バックスラッシュでのエスケープ不要
             private val charsetRegex = Regex("""charset=([\w-]+)""")

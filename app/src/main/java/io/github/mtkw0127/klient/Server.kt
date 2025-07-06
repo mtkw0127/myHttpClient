@@ -14,10 +14,10 @@ import kotlinx.coroutines.delay
 fun main() {
     embeddedServer(Netty, port = 8080) {
         routing {
-            get("/") {
+            get("/greet") {
                 call.respondText("Hello, World!おはよう！")
             }
-            get("/chunked") {
+            get("/for_chunked") {
                 call.respondTextWriter(contentType = ContentType.Text.Plain) {
                     val messages = listOf(
                         "Chunked",
@@ -30,7 +30,7 @@ fun main() {
                     }
                 }
             }
-            post("/echo") {
+            post("/for_post") {
                 val body = call.receiveText()
                 call.respondText("Echo: $body")
             }
