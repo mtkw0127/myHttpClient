@@ -10,7 +10,12 @@ class HttpClient {
         val socket = getOrCreateSocket(request.host, request.port)
         socket.outputStream.write(request.build())
         socket.outputStream.flush()
-        return Response.from(socket.inputStream)
+        val response = Response.from(socket.inputStream)
+        when {
+            response.headers.isClose -> remove(request.host, request.port)
+            response.headers.isKeepAlive.not() -> remove(request.host, request.port)
+        }
+        return response
     }
 
     private fun getOrCreateSocket(host: String, port: Int): Socket {
@@ -23,5 +28,11 @@ class HttpClient {
             connectionPool[key] = newSocket
             newSocket
         }
+    }
+
+    private fun remove(host: String, port: Int) {
+        val key = "$host:$port"
+        connectionPool[key]?.close()
+        connectionPool.remove(key)
     }
 }
