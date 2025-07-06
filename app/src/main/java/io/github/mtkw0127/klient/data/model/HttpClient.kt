@@ -1,4 +1,4 @@
-package io.github.mtkw0127.klient.model
+package io.github.mtkw0127.klient.data.model
 
 import java.net.Socket
 

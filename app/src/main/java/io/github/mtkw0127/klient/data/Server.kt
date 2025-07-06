@@ -1,4 +1,4 @@
-package io.github.mtkw0127.klient
+package io.github.mtkw0127.klient.data
 
 import io.ktor.http.ContentType
 import io.ktor.server.engine.embeddedServer
