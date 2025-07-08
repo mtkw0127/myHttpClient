@@ -18,12 +18,16 @@ data class Response(
     ) {
         val charset: Charset
             get() {
-                return charsetRegex
-                    .find(checkNotNull(values[KEY_CONTENT_TYPE]))
-                    ?.groupValues
-                    ?.get(1)?.let {
-                        Charset.forName(it)
-                    } ?: Charsets.UTF_8
+                val charset = values[KEY_CONTENT_TYPE]
+                return when {
+                    charset == null -> Charsets.UTF_8
+                    else -> charsetRegex
+                        .find(charset)
+                        ?.groupValues
+                        ?.get(1)?.let {
+                            Charset.forName(it)
+                        } ?: Charsets.UTF_8
+                }
             }
 
         val isTransferEncodingChunked: Boolean
@@ -134,6 +138,7 @@ body: $body
             val bodyResponse = ByteArrayOutputStream()
             val arrayDeque = ArrayDeque<Byte>(5)
             while (true) {
+                if (headers.contentLength == 0) break
                 val byte = input.read()
                 totalReadBytes++
                 bodyResponse.write(byte)

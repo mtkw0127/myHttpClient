@@ -23,14 +23,25 @@ sealed interface Request {
         }.toByteArray()
     }
 
-    data class POST(
+    data class DELETE(
         override val path: String,
         override val host: String,
         override val port: Int,
-        val content: String,
-        val contentType: ContentType,
-        val data: String,
     ) : Request {
+        override fun build() = buildString {
+            append("DELETE $path HTTP/1.1\r\n")
+            append("Host: $host\r\n")
+            append("Connection: keep-alive\r\n")
+            append("\r\n")
+        }.toByteArray()
+    }
+
+    sealed interface WithContent : Request {
+        val method: String
+        val content: String
+        val contentType: ContentType
+        val data: String
+
         enum class ContentType(val value: String) {
             FORM_URLENCODED(
                 value = "application/x-www-form-urlencoded"
@@ -42,7 +53,7 @@ sealed interface Request {
 
         override fun build(): ByteArray {
             val headerParts = buildString {
-                append("POST $path HTTP/1.1\r\n")
+                append("$method $path HTTP/1.1\r\n")
                 append("Host: $host\r\n")
                 append("Connection: keep-alive\r\n")
                 append("Content-Type: ${contentType.value}\r\n")
@@ -71,6 +82,36 @@ sealed interface Request {
             return headerParts + contentBytes
         }
     }
+
+    data class POST(
+        override val method: String = "POST",
+        override val path: String,
+        override val host: String,
+        override val port: Int,
+        override val content: String,
+        override val contentType: WithContent.ContentType,
+        override val data: String,
+    ) : WithContent
+
+    data class PUT(
+        override val method: String = "PUT",
+        override val path: String,
+        override val host: String,
+        override val port: Int,
+        override val content: String,
+        override val contentType: WithContent.ContentType,
+        override val data: String,
+    ) : WithContent
+
+    data class PATCH(
+        override val method: String = "PATCH",
+        override val path: String,
+        override val host: String,
+        override val port: Int,
+        override val content: String,
+        override val contentType: WithContent.ContentType,
+        override val data: String,
+    ) : WithContent
 }
 
 fun sampleRequests(): List<Request> {
@@ -78,14 +119,17 @@ fun sampleRequests(): List<Request> {
         sampleRequest1(),
         sampleRequest2(),
         sampleRequest3(),
-        sampleRequest4()
+        sampleRequest4(),
+        sampleRequest5(),
+        sampleRequest6(),
+        sampleRequest7(),
     )
 }
 
 // For GET request
 fun sampleRequest1(): Request {
     return Request.GET(
-        path = "/greet",
+        path = "/for_get",
         host = "localhost",
         port = 8080,
     )
@@ -98,7 +142,7 @@ fun sampleRequest2(): Request {
         host = "localhost",
         port = 8080,
         content = "Echo: Hello, World!",
-        contentType = Request.POST.ContentType.FORM_URLENCODED,
+        contentType = Request.WithContent.ContentType.FORM_URLENCODED,
         data = "message=Hello%2C+World%21"
     )
 }
@@ -110,7 +154,7 @@ fun sampleRequest3(): Request {
         host = "localhost",
         port = 8080,
         content = "{\"message\": \"Hello, World!\"}",
-        contentType = Request.POST.ContentType.APPLICATION_JSON,
+        contentType = Request.WithContent.ContentType.APPLICATION_JSON,
         data = "{\"message\": \"Hello, World!\"}"
     )
 }
@@ -119,6 +163,39 @@ fun sampleRequest3(): Request {
 fun sampleRequest4(): Request {
     return Request.GET(
         path = "/for_chunked",
+        host = "localhost",
+        port = 8080,
+    )
+}
+
+// For PUT
+fun sampleRequest5(): Request {
+    return Request.PUT(
+        path = "/for_put",
+        host = "localhost",
+        port = 8080,
+        content = "{\"message\": \"Hello, World!\"}",
+        contentType = Request.WithContent.ContentType.APPLICATION_JSON,
+        data = "{\"message\": \"Hello, World!\"}"
+    )
+}
+
+// For PUT
+fun sampleRequest6(): Request {
+    return Request.PATCH(
+        path = "/for_patch",
+        host = "localhost",
+        port = 8080,
+        content = "{\"message\": \"Hello, World!\"}",
+        contentType = Request.WithContent.ContentType.APPLICATION_JSON,
+        data = "{\"message\": \"Hello, World!\"}"
+    )
+}
+
+// For PUT
+fun sampleRequest7(): Request {
+    return Request.DELETE(
+        path = "/for_delete",
         host = "localhost",
         port = 8080,
     )

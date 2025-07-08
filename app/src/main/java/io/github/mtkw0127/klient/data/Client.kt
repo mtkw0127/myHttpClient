@@ -7,6 +7,7 @@ fun main() {
     val client = HttpClient()
     sampleRequests().forEach {
         val response = client.send(it)
+        println("----")
         println(response)
     }
 }
