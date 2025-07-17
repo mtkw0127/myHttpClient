@@ -36,15 +36,9 @@ android {
 }
 
 dependencies {
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-
-    implementation("io.ktor:ktor-server-core:3.1.3")
-    implementation("io.ktor:ktor-server-netty:3.1.3")
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
