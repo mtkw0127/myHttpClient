@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
 
@@ -18,34 +19,38 @@ class DiskCacheImpl(
         uri: URI,
         byteArray: ByteArray
     ) = withContext(dispatcher) {
-        val file = getFile(uri)
+        val file = getBodyFile(uri)
         if (file.exists()) {
             file.delete()
             file.createNewFile()
         }
-        FileOutputStream(file).use {
-            it.write(byteArray)
-            it.flush()
+        try {
+            FileOutputStream(file).use {
+                it.write(byteArray)
+                it.flush()
+            }
+        } catch (e: IOException) {
+            throw e
         }
     }
 
     override suspend fun getBody(uri: URI): ByteArray? = withContext(dispatcher) {
-        val file = getFile(uri)
+        val file = getBodyFile(uri)
         if (file.exists().not()) return@withContext null
-        FileInputStream(getFile(uri)).use { inputStream ->
+        FileInputStream(getBodyFile(uri)).use { inputStream ->
             return@withContext inputStream.readBytes()
         }
     }
 
     override suspend fun clear(uri: URI): Unit = withContext(dispatcher) {
-        getFile(uri).delete()
+        getBodyFile(uri).delete()
     }
 
     override suspend fun clearAll(): Unit = withContext(dispatcher) {
         cacheDir.deleteRecursively()
     }
 
-    private fun getFile(uri: URI): File {
+    private fun getBodyFile(uri: URI): File {
         return File(cacheDir, "${createHashFrom(uri)}.body")
     }
 
