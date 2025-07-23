@@ -90,7 +90,7 @@ class DiskCacheImpl(
         val bytes = uri.toString().toByteArray(Charsets.UTF_8)
         // URIを文字コードでエンコードしたbyteArrayをSHA-256でハッシュ化する
         // これによりURIが長くても256bitsのハッシュに変換される
-        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        val digest = MessageDigest.getInstance("MD5").digest(bytes)
         // 256bitsのハッシュを16進数文字列で表現する
         // 先頭4bitを16進数で表現すると、64文字の文字列になる
         return digest.joinToString("") { "%02x".format(it) }
