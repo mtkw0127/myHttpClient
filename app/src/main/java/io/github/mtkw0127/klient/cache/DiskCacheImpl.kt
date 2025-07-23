@@ -15,11 +15,23 @@ class DiskCacheImpl(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : Cache {
 
+    override suspend fun saveHeader(
+        uri: URI,
+        byteArray: ByteArray
+    ) = withContext(dispatcher) {
+        val file = getFile(uri, FileType.HEADER)
+        saveFile(file, byteArray)
+    }
+
     override suspend fun saveBody(
         uri: URI,
         byteArray: ByteArray
     ) = withContext(dispatcher) {
-        val file = getBodyFile(uri)
+        val file = getFile(uri, FileType.BODY)
+        saveFile(file, byteArray)
+    }
+
+    private fun saveFile(file: File, byteArray: ByteArray) {
         if (file.exists()) {
             file.delete()
             file.createNewFile()
@@ -35,23 +47,36 @@ class DiskCacheImpl(
     }
 
     override suspend fun getBody(uri: URI): ByteArray? = withContext(dispatcher) {
-        val file = getBodyFile(uri)
+        val file = getFile(uri, FileType.BODY)
         if (file.exists().not()) return@withContext null
-        FileInputStream(getBodyFile(uri)).use { inputStream ->
+        FileInputStream(file).use { inputStream ->
             return@withContext inputStream.readBytes()
         }
     }
 
     override suspend fun clear(uri: URI): Unit = withContext(dispatcher) {
-        getBodyFile(uri).delete()
+        FileType.entries.forEach {
+            getFile(uri, it).delete()
+        }
     }
 
     override suspend fun clearAll(): Unit = withContext(dispatcher) {
         cacheDir.deleteRecursively()
     }
 
-    private fun getBodyFile(uri: URI): File {
-        return File(cacheDir, "${createHashFrom(uri)}.body")
+
+    private fun getFile(
+        uri: URI,
+        fileType: FileType,
+    ): File {
+        return File(cacheDir, "${createHashFrom(uri)}.${fileType.extension}")
+    }
+
+    enum class FileType(
+        val extension: String
+    ) {
+        HEADER("header"),
+        BODY("body")
     }
 
     /**

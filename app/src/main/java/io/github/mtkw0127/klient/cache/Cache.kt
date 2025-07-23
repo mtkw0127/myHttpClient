@@ -3,6 +3,18 @@ package io.github.mtkw0127.klient.cache
 import java.net.URI
 
 interface Cache {
+
+    /**
+     * Save the header map to the cache with the given URI.
+     *
+     * @param uri The URI to save the header under.
+     * @param byteArray The header data
+     */
+    suspend fun saveHeader(
+        uri: URI,
+        byteArray: ByteArray
+    )
+
     /**
      * Save the byte array to the cache with the given URI.
      *
