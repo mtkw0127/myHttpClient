@@ -46,13 +46,23 @@ class DiskCacheImpl(
     }
 
     private fun getFile(uri: URI): File {
-        return File(cacheDir, "${sanitize(uri)}.body")
+        return File(cacheDir, "${createHashFrom(uri)}.body")
     }
 
-    private fun sanitize(uri: URI): String {
-        // TODO: sanitize the URI to create a valid file name
+    /**
+     * URIをSHA-256でハッシュ化して、16進数文字列に変換する
+     * これによりURIが長くても256bitsのハッシュに変換される
+     * @param uri ハッシュ化するURI
+     * @return ハッシュ化されたURIの16進数文字列
+     */
+    private fun createHashFrom(uri: URI): String {
+        // "http://example.com/test"をバイト列として扱いたいため、UTF-8でエンコードする
         val bytes = uri.toString().toByteArray(Charsets.UTF_8)
+        // URIを文字コードでエンコードしたbyteArrayをSHA-256でハッシュ化する
+        // これによりURIが長くても256bitsのハッシュに変換される
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        // 256bitsのハッシュを16進数文字列で表現する
+        // 先頭4bitを16進数で表現すると、64文字の文字列になる
         return digest.joinToString("") { "%02x".format(it) }
     }
 }
