@@ -80,16 +80,16 @@ class DiskCacheImpl(
     }
 
     /**
-     * URIをSHA-256でハッシュ化して、16進数文字列に変換する
-     * これによりURIが長くても256bitsのハッシュに変換される
+     * URIをMD5でハッシュ化して、16進数文字列に変換する
      * @param uri ハッシュ化するURI
      * @return ハッシュ化されたURIの16進数文字列
      */
     private fun createHashFrom(uri: URI): String {
         // "http://example.com/test"をバイト列として扱いたいため、UTF-8でエンコードする
         val bytes = uri.toString().toByteArray(Charsets.UTF_8)
-        // URIを文字コードでエンコードしたbyteArrayをSHA-256でハッシュ化する
-        // これによりURIが長くても256bitsのハッシュに変換される
+        // URIを文字コードでエンコードしたbyteArrayをMD5でハッシュ化する
+        // MD5は128ビットのハッシュ値を生成するため、256ビットのハッシュ値を得るためには、16進数で表現すると64文字の文字列になる
+        // SHA256に比べて高速だが衝突の可能性はある。ファイル名に利用するだけなので問題ないと判断。
         val digest = MessageDigest.getInstance("MD5").digest(bytes)
         // 256bitsのハッシュを16進数文字列で表現する
         // 先頭4bitを16進数で表現すると、64文字の文字列になる
