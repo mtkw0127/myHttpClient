@@ -1,5 +1,6 @@
 package io.github.mtkw0127.klient.data.model
 
+import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -42,41 +43,71 @@ sealed interface Request {
         val contentType: ContentType
         val data: String
 
+        val multipartData: List<Part>
+
+        data class Part(
+            val name: String,
+            val filename: String? = null,
+            val contentType: String? = null,
+            val content: ByteArray
+        )
+
+        companion object {
+            const val MULTI_PART_BOUNDARY: String = "----MyHttpClientBoundary"
+        }
+
         enum class ContentType(val value: String) {
             FORM_URLENCODED(
                 value = "application/x-www-form-urlencoded"
             ),
             APPLICATION_JSON(
                 value = "application/json"
+            ),
+            MULTIPART_FORM_DATA(
+                value = "multipart/form-data; boundary=${MULTI_PART_BOUNDARY}"
             );
         }
 
         override fun build(): ByteArray {
+            val contentBytes = when (contentType) {
+                ContentType.FORM_URLENCODED -> URLEncoder.encode(
+                    data,
+                    StandardCharsets.UTF_8.toString()
+                ).toByteArray()
+
+                ContentType.APPLICATION_JSON -> content.toByteArray()
+
+                ContentType.MULTIPART_FORM_DATA -> {
+                    val outputStream = ByteArrayOutputStream()
+                    val boundary = "--${MULTI_PART_BOUNDARY}\r\n"
+                    val parts = multipartData.map { part ->
+                        val header = StringBuilder().apply {
+                            append(boundary)
+                            append("Content-Disposition: form-data; name=\"${part.name}\"")
+                            part.filename?.let {
+                                append("; filename=\"${part.filename}\"")
+                            }
+                            append("\r\n")
+                            part.contentType?.let {
+                                append("Content-Type: $it\r\n")
+                            }
+                            append("\r\n")
+                        }.toString()
+                        header.toByteArray() + part.content + "\r\n".toByteArray()
+                    }
+                    val byteArrayList = parts + "--${MULTI_PART_BOUNDARY}--\r\n".toByteArray()
+                    byteArrayList.forEach { outputStream.write(it) }
+                    outputStream.toByteArray()
+                }
+            }
+
             val headerParts = buildString {
                 append("$method $path HTTP/1.1\r\n")
                 append("Host: $host\r\n")
                 append("Connection: keep-alive\r\n")
                 append("Content-Type: ${contentType.value}\r\n")
-                when (contentType) {
-                    ContentType.FORM_URLENCODED -> {
-                        val encodedData = URLEncoder.encode(data, StandardCharsets.UTF_8.toString())
-                        append("Content-Length: ${encodedData.toByteArray().size}\r\n")
-                    }
-
-                    ContentType.APPLICATION_JSON -> {
-                        append("Content-Length: ${content.toByteArray().size}\r\n")
-                    }
-                }
+                append("Content-Length: ${contentBytes.size}\r\n")
                 append("\r\n")
-            }.toByteArray()
-
-            val contentBytes = when (contentType) {
-                ContentType.FORM_URLENCODED -> URLEncoder.encode(
-                    data,
-                    StandardCharsets.UTF_8.toString()
-                )
-
-                ContentType.APPLICATION_JSON -> content
             }.toByteArray()
 
             return headerParts + contentBytes
@@ -91,6 +122,7 @@ sealed interface Request {
         override val content: String,
         override val contentType: WithContent.ContentType,
         override val data: String,
+        override val multipartData: List<WithContent.Part>,
     ) : WithContent
 
     data class PUT(
@@ -101,6 +133,7 @@ sealed interface Request {
         override val content: String,
         override val contentType: WithContent.ContentType,
         override val data: String,
+        override val multipartData: List<WithContent.Part>,
     ) : WithContent
 
     data class PATCH(
@@ -111,6 +144,7 @@ sealed interface Request {
         override val content: String,
         override val contentType: WithContent.ContentType,
         override val data: String,
+        override val multipartData: List<WithContent.Part>,
     ) : WithContent
 }
 
@@ -123,6 +157,7 @@ fun sampleRequests(): List<Request> {
         sampleRequest5(),
         sampleRequest6(),
         sampleRequest7(),
+        sampleRequest8(),
     )
 }
 
@@ -143,7 +178,8 @@ fun sampleRequest2(): Request {
         port = 8080,
         content = "Echo: Hello, World!",
         contentType = Request.WithContent.ContentType.FORM_URLENCODED,
-        data = "message=Hello%2C+World%21"
+        data = "message=Hello%2C+World%21",
+        multipartData = emptyList()
     )
 }
 
@@ -155,7 +191,8 @@ fun sampleRequest3(): Request {
         port = 8080,
         content = "{\"message\": \"Hello, World!\"}",
         contentType = Request.WithContent.ContentType.APPLICATION_JSON,
-        data = "{\"message\": \"Hello, World!\"}"
+        data = "{\"message\": \"Hello, World!\"}",
+        multipartData = emptyList()
     )
 }
 
@@ -176,7 +213,8 @@ fun sampleRequest5(): Request {
         port = 8080,
         content = "{\"message\": \"Hello, World!\"}",
         contentType = Request.WithContent.ContentType.APPLICATION_JSON,
-        data = "{\"message\": \"Hello, World!\"}"
+        data = "{\"message\": \"Hello, World!\"}",
+        multipartData = emptyList()
     )
 }
 
@@ -188,7 +226,8 @@ fun sampleRequest6(): Request {
         port = 8080,
         content = "{\"message\": \"Hello, World!\"}",
         contentType = Request.WithContent.ContentType.APPLICATION_JSON,
-        data = "{\"message\": \"Hello, World!\"}"
+        data = "{\"message\": \"Hello, World!\"}",
+        multipartData = emptyList()
     )
 }
 
@@ -198,5 +237,18 @@ fun sampleRequest7(): Request {
         path = "/for_delete",
         host = "localhost",
         port = 8080,
+    )
+}
+
+// For Multipart
+fun sampleRequest8(): Request {
+    return Request.POST(
+        path = "/for_post",
+        host = "localhost",
+        port = 8080,
+        content = "Echo: Hello, World!",
+        contentType = Request.WithContent.ContentType.MULTIPART_FORM_DATA,
+        data = "message=Hello%2C+World%21",
+        multipartData = emptyList(), // TODO: Add multipart data
     )
 }
